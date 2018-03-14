@@ -30,7 +30,7 @@ class Block(ABC, persistent.Persistent):
             seal_data (int): Seal data for block (in PoW this is the nonce satisfying the PoW puzzle; in PoA, the signature of the authority"
             hash (str): Hex-encoded SHA256^2 hash of the block header (self.header())
         """
-        
+
         self.parent_hash = parent_hash
         self.height = height
         self.transactions = transactions
