@@ -15,8 +15,17 @@ def calculate_profit(average_difficulty, hashrate_per_miner, num_miners, btc_usd
             int: Total expected mining profit in USD, rounded down to the nearest integer.
     """
 
-    # Placeholder for (4)
-    return 50
+    epsilon = 1 # small epsilon to avoid divide by 0 errors
+
+    total_hashrate = hashrate_per_miner*num_miners # hashes our pool can do per second (#hashes/sec)
+    hashes_per_block = 2**32 * average_difficulty # expected hashes required to find a single block (#hashes)
+
+    blocks_per_second = total_hashrate / (hashes_per_block + epsilon) # (1/sec)
+    sec_to_mine = months_to_mine*3600*24*30  # n_seconds in timeframe
+    usd_per_block = btc_per_block*btc_usd_price  # dollars_per_block
+
+
+    return round(blocks_per_second*sec_to_mine*usd_per_block)
 
 
 if __name__ == "__main__":
