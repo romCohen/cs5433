@@ -144,7 +144,7 @@ class Block(ABC, persistent.Persistent):
             # Check that height is correct w.r.t. parent height [test_bad_height]
             # On failure: return False, "Invalid height"
             parent = chain.blocks[self.parent_hash]
-            if parent.height + 1 is not self.height:
+            if parent.height + 1 != self.height:
                 return False, "Invalid height"
             # Check that timestamp is non-decreasing [test_bad_timestamp]
             # On failure: return False, "Invalid timestamp"
@@ -176,7 +176,8 @@ class Block(ABC, persistent.Persistent):
                     if inner_transaction.hash == transaction.hash:
                         return False, "Double transaction inclusion"
 
-                if transaction.hash in chain.blocks_containing_tx and nonempty_intersection(chain.get_chain_ending_with(self.parent_hash), chain.blocks_containing_tx[transaction.hash]):
+                chain_ending_with = chain.get_chain_ending_with(self.parent_hash)
+                if transaction.hash in chain.blocks_containing_tx and nonempty_intersection(chain_ending_with, chain.blocks_containing_tx[transaction.hash]):
                     return False, "Double transaction inclusion"
 
                 # for every input ref in the tx
@@ -184,15 +185,25 @@ class Block(ABC, persistent.Persistent):
                 last_input_from_transaction = None
                 input_values_sum = 0
                 output_values_sum = 0
-                for input_ref in transaction.input_refs:
+                for ref_index, input_ref in enumerate(transaction.input_refs):
                     # each input_ref is valid (aka corresponding transaction can be looked up in its holding transaction) [test_failed_input_lookup]
                     # (you may find chain.all_transactions useful here)
                     # On failure: return False, "Required output not found"
-                    input_hash, input_position = input_ref[:-2], int(input_ref[-1])
-                    if not input_hash in chain.all_transactions:
-                        return False, "Required output not found"
+                    colonIndex = input_ref.index(":")
+                    input_hash, input_position = input_ref[:colonIndex], int(float(input_ref[colonIndex + 1:]))
+                    # Check if the transaction input is in this block
+                    input_transactions = None
+                    for k, otherTransaction in enumerate(self.transactions):
+                        if k == i:
+                            continue
+                        if otherTransaction.hash == input_hash:
+                            input_transactions = otherTransaction
+                            break
+                    if input_transactions is None:
+                        if not input_hash in chain.all_transactions:
+                            return False, "Required output not found"
+                        input_transactions = chain.all_transactions[input_hash]
 
-                    input_transactions = chain.all_transactions[input_hash]
                     if len(input_transactions.outputs) <= input_position:
                         return False, "Required output not found"
 
@@ -214,8 +225,10 @@ class Block(ABC, persistent.Persistent):
                         input_refs[input_hash] = input_ref
                     else:
                         return False, "Double-spent input"
+
+
                     if input_ref in chain.blocks_spending_input:
-                        if nonempty_intersection(chain.blocks_spending_input[input_ref], chain.get_chain_ending_with(self.parent_hash)):
+                        if nonempty_intersection(chain.blocks_spending_input[input_ref], chain_ending_with):
                             return False, "Double-spent input"
 
                     # each input_ref points to a transaction on the same blockchain as this block [test_input_txs_on_chain]
@@ -223,7 +236,8 @@ class Block(ABC, persistent.Persistent):
                     # (you may find chain.blocks_containing_tx.get and nonempty_intersection as above helpful)
                     # On failure: return False, "Input transaction not found"
 
-                    if input_hash in chain.blocks_containing_tx and not nonempty_intersection(chain.blocks_containing_tx[input_hash], chain.get_chain_ending_with(self.parent_hash)) \
+                    if input_hash in chain.blocks_containing_tx and not nonempty_intersection(chain.blocks_containing_tx[input_hash],
+                                                                                              chain_ending_with) \
                                     and not (input_hash in transaction_outputs
                                     and len(transaction_outputs[input_hash]) > input_position
                                     and transaction_outputs[input_hash][input_position].receiver != input_transaction.sender):
