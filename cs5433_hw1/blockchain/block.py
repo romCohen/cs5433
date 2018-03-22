@@ -41,7 +41,7 @@ class Block(ABC, persistent.Persistent):
         self.seal_data = 0 # temporarily set seal_data to 0
         self.hash = self.calculate_hash() # keep track of hash for caching purposes
 
-    def calculate_merkle_root(self):
+    def calculate_merkle_root(self, hash_function=sha256_2_string):
         """ Gets the Merkle root hash for a given list of transactions.
 
         This method is incomplete!  Right now, it only hashes the
@@ -54,8 +54,32 @@ class Block(ABC, persistent.Persistent):
         """
 
         # Placeholder for (BONUS)
-        all_txs_as_string = "".join([str(x) for x in self.transactions])
-        return sha256_2_string(all_txs_as_string)
+        if len(self.transactions) == 0:
+            return hash_function("")
+
+        current_tree_layer = []
+
+        # Fill current current_tree_layer with all of the transactions
+        for tx in self.transactions:
+            current_tree_layer.append(hash_function(str(tx)))
+
+        next_tree_layer = current_tree_layer
+        while len(current_tree_layer) != 1:
+            next_tree_layer = []
+            index = 0
+            while index < len(current_tree_layer):
+                if index < len(current_tree_layer) - 1:
+                    hash_concatenation = current_tree_layer[index]
+                    hash_concatenation += current_tree_layer[index + 1]
+                    index += 2
+                    hash_concatenation = hash_function(hash_concatenation)
+                else:
+                    hash_concatenation = current_tree_layer[index]
+                    index += 1
+                next_tree_layer.append(hash_concatenation)
+            current_tree_layer = next_tree_layer
+
+        return next_tree_layer[0]
 
     def unsealed_header(self):
         """ Computes the header string of a block (the component that is sealed by mining).

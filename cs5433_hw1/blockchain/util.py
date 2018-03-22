@@ -22,6 +22,11 @@ def sha256_2_string(string_to_hash):
     m.update(intermediate_hash_value)
     return m.hexdigest()
 
+def sha256(string_to_hash):
+    m = hashlib.sha256()
+    m.update(string_to_hash.encode('utf-8'))
+    return m.hexdigest()
+
 
 def encode_as_str(list_to_encode, sep = "|"):
     """ Encodes a list as a string with given separator.
